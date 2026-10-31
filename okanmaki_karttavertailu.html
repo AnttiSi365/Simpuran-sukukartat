@@ -80,9 +80,12 @@ details li { margin-bottom: 6px; }
 .pop .src { color: #556; font-size: 11.5px; margin-top: 6px; }
 .unc { color: #a5520b; font-weight: 600; }
 @media (max-width: 800px) {
-  body { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) minmax(0, 46%); }
-  .map-wrap { order: -1; }
-  .panel { border-right: 0; border-top: 1px solid var(--line); }
+  /* Kapea näkymä (esim. Google Sites -upotus): kartalla kiinteä korkeus,
+     paneeli saa kasvaa sisältönsä mittaiseksi ilman omaa vierityspalkkia. */
+  html, body { height: auto; }
+  body { grid-template-columns: 1fr; grid-template-rows: auto auto; overflow: visible; }
+  .map-wrap { order: -1; height: 480px; }
+  .panel { overflow: visible; border-right: 0; border-top: 1px solid var(--line); }
 }
 </style>
 </head>
