@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Okanmäen karttavertailu</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root {
+  --bg: #eaeef2; --panel: #f8f9fb; --card: #ffffff; --ink: #14202b; --muted: #5d6b78;
+  --line: #d3dae1; --accent: #0b6e8a; --accent-ink: #ffffff; --focus: #0b6e8a;
+  --simpura: #a93226; --lamberg: #d4760a; --kinanen: #1f5f99; --uimonen: #2e8b57; --kapanen: #7b4fa0;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d141a; --panel: #141d25; --card: #1a252f; --ink: #e5ecf2; --muted: #93a3b1;
+    --line: #2a3945; --accent: #5cc0dc; --accent-ink: #08222b; --focus: #5cc0dc; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d141a; --panel: #141d25; --card: #1a252f; --ink: #e5ecf2; --muted: #93a3b1;
+  --line: #2a3945; --accent: #5cc0dc; --accent-ink: #08222b; --focus: #5cc0dc; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  display: grid; grid-template-columns: 360px minmax(0, 1fr); overflow: hidden;
+}
+button, select, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.panel {
+  overflow-y: auto; padding: 20px 16px 28px; background: var(--panel);
+  border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 20px; min-width: 0;
+}
+h1 { font-size: 18px; line-height: 1.25; margin: 0; letter-spacing: -0.01em; }
+.lead { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+h2 { font-size: 13px; font-weight: 650; margin: 0 0 4px; }
+.sub { margin: 0 0 10px; color: var(--muted); font-size: 12.5px; }
+.cards { display: flex; flex-direction: column; gap: 10px; }
+.card {
+  background: var(--card); border: 1px solid var(--line); border-left: 5px solid var(--c, var(--accent));
+  border-radius: 10px; padding: 10px 12px 12px;
+}
+.card-head { display: flex; align-items: center; gap: 10px; }
+.card-head label { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; cursor: pointer; }
+.card-head input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; flex: none; }
+.name { font-weight: 600; }
+.hint { display: block; color: var(--muted); font-size: 12px; font-weight: 400; }
+.row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.row > label { flex: none; font-size: 12.5px; color: var(--muted); min-width: 70px; }
+.row output { flex: none; min-width: 42px; text-align: right; font-variant-numeric: tabular-nums; font-size: 12.5px; }
+input[type="range"] { flex: 1; min-width: 0; accent-color: var(--c, var(--accent)); margin: 0; height: 22px; }
+select { flex: 1; min-width: 0; padding: 4px 6px; border-radius: 6px; border: 1px solid var(--line); background: var(--card); }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn { border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: 5px 10px; cursor: pointer; font-size: 13px; }
+.btn:hover { border-color: var(--accent); }
+.legend { display: grid; grid-template-columns: 16px 1fr; gap: 4px 8px; margin-top: 8px; font-size: 12.5px; align-items: center; }
+.sw { width: 14px; height: 14px; border-radius: 3px; border: 2px solid var(--sw); background: color-mix(in srgb, var(--sw) 35%, transparent); }
+.sym { display: inline-block; width: 12px; height: 12px; }
+details { color: var(--muted); font-size: 12.5px; }
+summary { cursor: pointer; color: var(--ink); font-weight: 600; margin-bottom: 6px; }
+details ul { margin: 6px 0 0; padding-left: 18px; }
+details li { margin-bottom: 6px; }
+.note { font-size: 12.5px; color: var(--muted); margin: 0; }
+#map { height: 100%; width: 100%; background: #dfe5ea; }
+.map-wrap { position: relative; min-width: 0; min-height: 0; }
+.leaflet-container { font: inherit; }
+.nro-label {
+  background: rgba(255,255,255,0.85); border: 1px solid #333; border-radius: 3px;
+  font: 600 11px/1 system-ui, sans-serif; color: #111; padding: 2px 3px; white-space: nowrap;
+  transform: translate(-50%, -50%); display: inline-block;
+}
+.leaflet-tooltip.lbl { background: rgba(255,255,255,0.88); border: 0; box-shadow: none; padding: 1px 4px; font-size: 11.5px; font-weight: 600; color: #111; }
+.leaflet-tooltip.lbl::before { display: none; }
+.leaflet-tooltip.paikka { font-style: italic; font-weight: 500; color: #233; }
+.pop h3 { margin: 0 0 4px; font-size: 14px; }
+.pop p { margin: 2px 0; }
+.pop .src { color: #556; font-size: 11.5px; margin-top: 6px; }
+.unc { color: #a5520b; font-weight: 600; }
+@media (max-width: 800px) {
+  body { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) minmax(0, 46%); }
+  .map-wrap { order: -1; }
+  .panel { border-right: 0; border-top: 1px solid var(--line); }
+}
+</style>
+</head>
+<body>
+<aside class="panel">
+  <div>
+    <h1>Okanmäen karttojen päällekkäisvertailu</h1>
+    <p class="lead">Ruskeala, Leppäselän kylä, Okanmäki. Alimpana nykyinen satelliittikuva, sen päällä maastokartta 1:20 000 ja ylimpänä pitäjänkartta 1943. Säädä karttojen läpinäkyvyyttä liukusäätimillä.</p>
+  </div>
+
+  <section>
+    <h2>Kartat (ylin ensin)</h2>
+    <p class="sub">Liukusäädin 0 % = näkymätön, 100 % = peittävä.</p>
+    <div class="cards">
+      <div class="card" style="--c:#c98410">
+        <div class="card-head"><label><input type="checkbox" id="on-pitaja" checked><span><span class="name">Pitäjänkartta 1943</span><span class="hint">Lehti 4142 09 Leppäselkä, 1:20 000</span></span></label></div>
+        <div class="row"><label for="op-pitaja">Näkyvyys</label><input type="range" id="op-pitaja" min="0" max="100" value="60"><output id="out-pitaja">60 %</output></div>
+        <div class="row"><label for="bl-pitaja">Sekoitus</label><select id="bl-pitaja"><option value="normal">Normaali</option><option value="multiply">Kerro (viivat läpi)</option><option value="difference">Erotus</option></select></div>
+      </div>
+      <div class="card" style="--c:#17877a">
+        <div class="card-head"><label><input type="checkbox" id="on-maasto" checked><span><span class="name">Maastokartta</span><span class="hint">Lehti 4142 09 Leppäselkä, 1:20 000</span></span></label></div>
+        <div class="row"><label for="op-maasto">Näkyvyys</label><input type="range" id="op-maasto" min="0" max="100" value="0"><output id="out-maasto">0 %</output></div>
+        <div class="row"><label for="bl-maasto">Sekoitus</label><select id="bl-maasto"><option value="normal">Normaali</option><option value="multiply">Kerro (viivat läpi)</option><option value="difference">Erotus</option></select></div>
+      </div>
+      <div class="card" style="--c:#4a6b3a">
+        <div class="card-head"><label><input type="checkbox" id="on-sat" checked><span><span class="name">Satelliittikuva</span><span class="hint">Nykytilanne, Esri World Imagery</span></span></label></div>
+      </div>
+    </div>
+    <div class="row btns" style="margin-top:10px">
+      <button class="btn" data-preset="sat">Vain satelliitti</button>
+      <button class="btn" data-preset="maasto">Vain maastokartta</button>
+      <button class="btn" data-preset="pitaja">Vain pitäjänkartta</button>
+      <button class="btn" data-preset="puoli">Kaikki puoliksi</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Kohteet</h2>
+    <div class="cards">
+      <div class="card">
+        <div class="card-head"><label><input type="checkbox" id="on-talot" checked><span><span class="name">1. Asuntojen sijainnit</span><span class="hint">Talot ja kodit (17 kpl)</span></span></label></div>
+        <div class="legend">
+          <svg class="sym" viewBox="0 0 12 12"><rect x="1" y="1" width="10" height="10" fill="#a93226" stroke="#fff" stroke-width="1.5"/></svg><span>Simpuroiden talo</span>
+          <svg class="sym" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="#1d2b36" stroke="#fff" stroke-width="1.5"/></svg><span>Muu talo tai koti</span>
+          <svg class="sym" viewBox="0 0 12 12"><path d="M6 1 L11 11 L1 11 Z" fill="#1f5f99" stroke="#fff" stroke-width="1.2"/></svg><span>Koulu</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><label><input type="checkbox" id="on-pellot" checked><span><span class="name">2. Peltojen omistajat</span><span class="hint">42 lohkoa, numero = pitäjänkartan yläindeksi</span></span></label></div>
+        <div class="legend" id="leg-pellot"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><label><input type="checkbox" id="on-paikat" checked><span><span class="name">2. Paikkojen sijainnit</span><span class="hint">Paikannimet, mäet ja ojat</span></span></label></div>
+        <div class="legend">
+          <svg class="sym" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4" fill="#fff" stroke="#233" stroke-width="2"/></svg><span>Paikka (varma)</span>
+          <svg class="sym" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4" fill="#fff" stroke="#a5520b" stroke-width="2" stroke-dasharray="2 1.5"/></svg><span>Paikka (epävarma / todennäköinen)</span>
+          <svg class="sym" viewBox="0 0 12 12"><path d="M1 9 Q4 2 7 7 T11 3" fill="none" stroke="#1565c0" stroke-width="2"/></svg><span>Oja</span>
+        </div>
+      </div>
+      <label class="row" style="margin-top:4px;cursor:pointer"><input type="checkbox" id="on-nimet" checked style="accent-color:var(--accent)"> <span>Näytä nimet kartalla</span></label>
+    </div>
+    <p class="note" style="margin-top:8px">Napsauta kohdetta, niin näet sen tiedot ja lähteen.</p>
+  </section>
+
+  <details>
+    <summary>Lähteet</summary>
+    <ul>
+      <li><b>Satelliittikuva:</b> Esri World Imagery (Esri, Maxar, Earthstar Geographics), haettu QGIS:llä 31.10.2026. Kuvaa nykytilannetta.</li>
+      <li><b>Maastokartta:</b> Leppäselkä 4142 09, 1:20 000 (tiedosto 414209_LEPPASELKA(1)_muokattu.tif, Antin GeoKartat-kansio).</li>
+      <li><b>Pitäjänkartta:</b> Leppäselkä 4142 09, pitäjänkartta 1943, 1:20 000 (Paituli / Kansalliskirjasto, karttalehti 414209; Antin valkoistama ja värittämä versio v3).</li>
+      <li><b>Peltolohkot ja omistajat:</b> Okanmaki_omistajakartta.gpkg / Omistajat.ods; yläindeksit tarkistettu pitäjänkartasta 1943. Muodostusvuosi on joko suoraan taulukossa tai periytetty taulukon ylemmältä riviltä (merkitty popupissa).</li>
+      <li><b>Asunnot:</b> Talot.csv (GeoKartat\Talot), versio 24.10.2026.</li>
+      <li><b>Paikat:</b> Okanmaki_paikannimet_EPSG3067.csv; kunkin paikan karttalehti ja varmuus näkyvät popupissa.</li>
+    </ul>
+    <p class="note">Kartat on muunnettu Web Mercator -projektioon (EPSG:3857). Rasterien kohdistus perustuu tiedostojen omaan georeferointiin; maastokartan ja pitäjänkartan välillä voi olla muutaman kymmenen metrin eroja.</p>
+  </details>
+</aside>
+
+<main class="map-wrap"><div id="map" role="region" aria-label="Kartta"></div></main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="okanmaki_data/kohteet.js"></script>
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const B = [[61.76867984512576, 30.430430249548788], [61.84761577508134, 30.544516290631964]];
+  const map = L.map('map', { zoomSnap: 0.25, minZoom: 12, maxZoom: 19, maxBounds: L.latLngBounds(B).pad(0.3), attributionControl: true });
+  map.attributionControl.setPrefix('');
+  L.control.scale({ imperial: false, position: 'bottomright' }).addTo(map);
+
+  const sat = L.imageOverlay('okanmaki_data/satelliitti.jpg', B, { attribution: 'Satelliittikuva © Esri, Maxar, Earthstar Geographics', zIndex: 1 }).addTo(map);
+  const maasto = L.imageOverlay('okanmaki_data/maasto.webp', B, { opacity: 0, zIndex: 2, attribution: 'Maastokartta 4142 09' }).addTo(map);
+  const pitaja = L.imageOverlay('okanmaki_data/pitaja.webp', B, { opacity: 0.6, zIndex: 3, attribution: 'Pitäjänkartta 1943, Paituli' }).addTo(map);
+  const rasters = { sat, maasto, pitaja };
+
+  map.fitBounds([[61.795, 30.455], [61.822, 30.52]]);
+
+  /* ---------- raster controls ---------- */
+  function bindRaster(key) {
+    const lyr = rasters[key], op = $('#op-' + key), out = $('#out-' + key), on = $('#on-' + key), bl = $('#bl-' + key);
+    if (op) op.addEventListener('input', () => { lyr.setOpacity(op.value / 100); out.textContent = op.value + ' %'; if (!on.checked) { on.checked = true; map.addLayer(lyr); } });
+    on.addEventListener('change', () => on.checked ? map.addLayer(lyr) : map.removeLayer(lyr));
+    if (bl) {
+      const apply = () => { const el = lyr.getElement(); if (el) el.style.mixBlendMode = bl.value; };
+      bl.addEventListener('change', apply); lyr.on('load', apply);
+    }
+  }
+  ['sat', 'maasto', 'pitaja'].forEach(bindRaster);
+  function setOp(key, v) {
+    const op = $('#op-' + key); if (!op) return;
+    op.value = v; op.dispatchEvent(new Event('input'));
+  }
+  const presets = { sat: [0, 0], maasto: [0, 100], pitaja: [100, 0], puoli: [50, 50] };
+  document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => {
+    const [p, m] = presets[b.dataset.preset];
+    $('#on-sat').checked || ($('#on-sat').checked = true, map.addLayer(sat));
+    setOp('pitaja', p); setOp('maasto', m);
+  }));
+
+  /* ---------- helpers ---------- */
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const fmtHa = v => Number(v).toLocaleString('fi-FI', { maximumFractionDigits: 2 });
+  const labels = [];
+  function lbl(layer, text, cls) {
+    layer.bindTooltip(esc(text), { permanent: true, direction: 'right', offset: [7, 0], className: 'lbl ' + (cls || '') });
+    labels.push(layer);
+  }
+
+  /* ---------- fields ---------- */
+  const FAM = [
+    ['Simpura', 'var(--simpura)', '#a93226'], ['Lamberg', 'var(--lamberg)', '#d4760a'],
+    ['Kinanen', 'var(--kinanen)', '#1f5f99'], ['Uimonen', 'var(--uimonen)', '#2e8b57'], ['Kapanen', 'var(--kapanen)', '#7b4fa0']
+  ];
+  const famOf = o => FAM.find(f => o.includes(f[0])) || ['Muu', '', '#555'];
+  const pellot = L.layerGroup();
+  const nroLabels = L.layerGroup();
+  L.geoJSON(window.PELLOT, {
+    style: f => { const c = famOf(f.properties.omistaja)[2]; return { color: c, weight: 2, fillColor: c, fillOpacity: 0.22 }; },
+    onEachFeature: (f, l) => {
+      const p = f.properties;
+      const peri = /periytetty/.test(p.vuosi_lahde || '');
+      l.bindPopup(`<div class="pop"><h3>${esc(p.omistaja)}</h3>
+        <p>Yläindeksi (nro): <b>${esc(p.nro)}</b> · lohko ${esc(p.lohko)}</p>
+        <p>Muodostusvuosi: <b>${esc(p.vuosi)}</b>${peri ? ' <span class="unc">?</span> (periytetty taulukon ylemmältä riviltä)' : ' (taulukossa)'}</p>
+        <p>Pinta-ala: ${fmtHa(p.ala_ha)} ha (laskettu)</p>
+        ${p.huomio ? `<p>Huomio: ${esc(p.huomio)}</p>` : ''}
+        <p class="src">Lähde: Omistajat.ods (nro → omistaja); yläindeksi tarkistettu pitäjänkartasta 1943.</p></div>`);
+      l.on('mouseover', () => l.setStyle({ weight: 3.5, fillOpacity: 0.4 }));
+      l.on('mouseout', () => l.setStyle({ weight: 2, fillOpacity: 0.22 }));
+      pellot.addLayer(l);
+      nroLabels.addLayer(L.marker([p.ly, p.lx], { interactive: false, keyboard: false,
+        icon: L.divIcon({ className: '', html: `<span class="nro-label">${esc(p.nro)}</span>`, iconSize: [0, 0] }) }));
+    }
+  });
+  const leg = $('#leg-pellot');
+  const owners = {};
+  window.PELLOT.features.forEach(f => { const o = f.properties.omistaja; owners[o] = owners[o] || []; if (!owners[o].includes(f.properties.nro)) owners[o].push(f.properties.nro); });
+  FAM.forEach(([n, , c]) => {
+    const list = Object.keys(owners).filter(o => o.includes(n)).sort((a, b) => owners[a][0] - owners[b][0]);
+    if (!list.length) return;
+    leg.insertAdjacentHTML('beforeend', `<span class="sw" style="--sw:${c}"></span><span><b>${n}</b>: ${list.map(o => `${esc(o)} (${owners[o].join(', ')})`).join('; ')}</span>`);
+  });
+
+  /* ---------- houses ---------- */
+  const talot = L.layerGroup();
+  window.TALOT.features.forEach(f => {
+    const p = f.properties, [x, y] = f.geometry.coordinates;
+    const koulu = /koulu/i.test(p.nimi), simp = /Simpura/.test(p.nimi);
+    const svg = koulu ? '<svg width="16" height="16" viewBox="0 0 12 12"><path d="M6 1 L11 11 L1 11 Z" fill="#1f5f99" stroke="#fff" stroke-width="1.2"/></svg>'
+      : simp ? '<svg width="16" height="16" viewBox="0 0 12 12"><rect x="1" y="1" width="10" height="10" fill="#a93226" stroke="#fff" stroke-width="1.5"/></svg>'
+      : '<svg width="14" height="14" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="#1d2b36" stroke="#fff" stroke-width="1.5"/></svg>';
+    const m = L.marker([y, x], { icon: L.divIcon({ className: '', html: svg, iconSize: [16, 16], iconAnchor: [8, 8] }), zIndexOffset: 1000, title: p.nimi });
+    const unc = /\?/.test(p.huomio);
+    m.bindPopup(`<div class="pop"><h3>${p.id}. ${esc(p.nimi)}</h3>${p.huomio ? `<p>${unc ? '<span class="unc">Sijainti epävarma (?)</span>' : esc(p.huomio)}</p>` : ''}<p class="src">Lähde: Talot.csv (GeoKartat\\Talot), nro ${p.id}.</p></div>`);
+    lbl(m, `${p.id}. ${p.nimi}${unc ? ' ?' : ''}`);
+    talot.addLayer(m);
+  });
+
+  /* ---------- places ---------- */
+  const paikat = L.layerGroup();
+  window.PAIKAT.features.forEach(f => {
+    const p = f.properties, varma = p.varmuus === 'varma';
+    const pop = `<div class="pop"><h3>${esc(p.nimi)}</h3>
+      <p>Kartalla: <b>${esc(p.nimi_kartalla)}</b> (${esc(p.tyyppi)})</p>
+      <p>Varmuus: ${varma ? 'varma' : `<span class="unc">${esc(p.varmuus)}</span>`}</p>
+      ${p.huomautus ? `<p>${esc(p.huomautus)}</p>` : ''}
+      <p class="src">Lähde: ${esc(p.kartta)}${p.kohta_kartalla ? ', ' + esc(p.kohta_kartalla) : ''}. Okanmaki_paikannimet_EPSG3067.csv.</p></div>`;
+    let l;
+    if (f.geometry.type === 'LineString') {
+      l = L.polyline(f.geometry.coordinates.map(([x, y]) => [y, x]), { color: '#1565c0', weight: 3.5, opacity: 0.9, dashArray: varma ? null : '6 4' });
+      l.bindTooltip(esc(p.nimi), { sticky: true });
+    } else {
+      const [x, y] = f.geometry.coordinates;
+      l = L.circleMarker([y, x], { radius: 5, color: varma ? '#233' : '#a5520b', weight: 2, fillColor: '#fff', fillOpacity: 1, dashArray: varma ? null : '3 2' });
+      lbl(l, p.nimi_kartalla + (varma ? '' : ' ?'), 'paikka');
+    }
+    l.bindPopup(pop);
+    paikat.addLayer(l);
+  });
+
+  /* ---------- toggles ---------- */
+  const groups = { talot, pellot, paikat };
+  function syncNro() {
+    const show = $('#on-pellot').checked && $('#on-nimet').checked && map.getZoom() >= 14;
+    show ? map.addLayer(nroLabels) : map.removeLayer(nroLabels);
+  }
+  Object.entries(groups).forEach(([k, g]) => {
+    const cb = $('#on-' + k);
+    if (cb.checked) g.addTo(map);
+    cb.addEventListener('change', () => { cb.checked ? map.addLayer(g) : map.removeLayer(g); syncNro(); });
+  });
+  function syncLabels() {
+    const on = $('#on-nimet').checked && map.getZoom() >= 14;
+    labels.forEach(l => { const t = l.getTooltip(); if (!t) return; on ? l.openTooltip() : l.closeTooltip(); t.options.permanent = on; });
+    syncNro();
+  }
+  $('#on-nimet').addEventListener('change', syncLabels);
+  map.on('zoomend', syncLabels);
+  syncLabels();
+})();
+</script>
+</body>
+</html>
