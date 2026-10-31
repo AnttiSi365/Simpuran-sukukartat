@@ -185,6 +185,16 @@ details li { margin-bottom: 6px; }
   const rasters = { sat, maasto, pitaja };
 
   map.fitBounds([[61.795, 30.455], [61.822, 30.52]]);
+  /* Korkeassa upotuksessa kartta voi olla korkeampi kuin karttakuvat: zoomataan
+     niin lähelle, että kuvat peittävät koko näkymän eikä reunoille jää harmaata. */
+  function coverView() {
+    const z = Math.max(12, map.getBoundsZoom(B, true));
+    map.setMinZoom(z);
+    if (map.getZoom() < z) map.setZoom(z, { animate: false });
+    map.panInsideBounds(B, { animate: false });
+  }
+  coverView();
+  map.on('resize', coverView);
 
   /* ---------- raster controls ---------- */
   function bindRaster(key) {
