@@ -180,8 +180,8 @@ details li { margin-bottom: 6px; }
   L.control.scale({ imperial: false, position: 'bottomright' }).addTo(map);
 
   const sat = L.imageOverlay('okanmaki_data/satelliitti.jpg', B, { attribution: 'Satelliittikuva © Esri, Maxar, Earthstar Geographics', zIndex: 1 }).addTo(map);
-  const maasto = L.imageOverlay('okanmaki_data/maasto.webp', B, { opacity: 0, zIndex: 2, attribution: 'Maastokartta 4142 09' }).addTo(map);
-  const pitaja = L.imageOverlay('okanmaki_data/pitaja.webp', B, { opacity: 0.6, zIndex: 3, attribution: 'Pitäjänkartta 1943, Paituli' }).addTo(map);
+  const maasto = L.imageOverlay('okanmaki_data/maasto.webp', B, { opacity: 0, zIndex: 2, attribution: 'Maastokartta SA 4142 09 © mml' }).addTo(map);
+  const pitaja = L.imageOverlay('okanmaki_data/pitaja.webp', B, { opacity: 0.6, zIndex: 3, attribution: 'Pitäjänkartta 1943 © mml' }).addTo(map);
   const rasters = { sat, maasto, pitaja };
 
   map.fitBounds([[61.795, 30.455], [61.822, 30.52]]);
