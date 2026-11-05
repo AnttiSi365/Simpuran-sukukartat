@@ -118,6 +118,7 @@ details li { margin-bottom: 6px; }
       </div>
       <div class="card" style="--c:#4a6b3a">
         <div class="card-head"><label><input type="checkbox" id="on-sat" checked><span><span class="name">Satelliittikuva</span><span class="hint">Nykytilanne, Esri World Imagery</span></span></label></div>
+        <div class="row"><label for="li-sat">Vaalennus</label><input type="range" id="li-sat" min="0" max="100" value="0"><output id="out-li-sat">0 %</output></div>
       </div>
     </div>
     <div class="row btns" style="margin-top:10px">
@@ -210,6 +211,15 @@ details li { margin-bottom: 6px; }
     }
   }
   ['sat', 'maasto', 'pitaja'].forEach(bindRaster);
+  // Satelliittikuvan vaalennus: tumma metsä vaalenee, jotta pitäjänkartan viivat erottuvat Kerro-tilassa.
+  const liSat = $('#li-sat');
+  function applyLighten() {
+    const v = liSat.value / 100, el = sat.getElement();
+    $('#out-li-sat').textContent = liSat.value + ' %';
+    if (el) el.style.filter = v ? `brightness(${1 + 0.9 * v}) contrast(${1 - 0.55 * v}) saturate(${1 - 0.4 * v})` : '';
+  }
+  liSat.addEventListener('input', applyLighten);
+  sat.on('load', applyLighten);
   function setOp(key, v) {
     const op = $('#op-' + key); if (!op) return;
     op.value = v; op.dispatchEvent(new Event('input'));
